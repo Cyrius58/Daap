@@ -174,7 +174,7 @@ contract Voting is Ownable {
         emit WorkflowStatusChange(WorkflowStatus.RegisteringVoters, WorkflowStatus.ProposalsRegistrationStarted);
     }
 
-    function endProposalsRegistering() external onlyOwner onlyProposalsRegistrationStartedStatus{
+    function endProposalsRegistering() external onlyOwner {
         require(nbProposals>1,'You need at least to add 2 proposal');
         workflowStatus = WorkflowStatus.ProposalsRegistrationEnded;
         emit WorkflowStatusChange(WorkflowStatus.ProposalsRegistrationStarted, WorkflowStatus.ProposalsRegistrationEnded);
@@ -193,8 +193,7 @@ contract Voting is Ownable {
         emit WorkflowStatusChange(WorkflowStatus.VotingSessionStarted, WorkflowStatus.VotingSessionEnded);
     }
 
-    function tallyVotesDraw() external onlyOwner onlyVotingSessionEndedStatus{
-       require(workflowStatus == WorkflowStatus.VotingSessionEnded, 'Current status is not voting session ended');
+    function tallyVotesDraw() external onlyOwner {
         uint highestCount;
         uint[5]memory winners; // egalite entre 5 personnes max
         uint nbWinners;

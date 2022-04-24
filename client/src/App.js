@@ -7,8 +7,7 @@ import "./App.css";
 
 
 class App extends Component {
-
-  state               = { addresses:null, events:null, nbVoters:null, MaxVoters:null, nbProposals:null, MaxProposals:null, oneProposal:null, /*totalVotes:null,*/ /*voter:0,*/ winner:0, workflowStatus:null, owned:null, web3:null, accounts:null, contract:null };
+  state               = { addresses:null, events:null, nbVoters:null, MaxVoters:null, nbProposals:null, MaxProposals:null, proposals:null, oneProposal:null, totalVotes:0, voter:null, winner:null, workflowStatus:null, owned:null, web3:null, accounts:null, contract:null};
   enumWorkflowStatus  = ["Enregistrement des votants","Enregistrement des propositions","Fin de l'enregistrement des propositions","Session de vote","Fin de session de vote","Session de résultats"];
   tempAddr            =[];
   componentDidMount   = async () => {
@@ -23,34 +22,51 @@ class App extends Component {
       let nbVoters          = await instance.methods.getNbVoters().call();
       const owner           = await instance.methods.owner().call();
       let workflowStatus    = await instance.methods.getWorkflowStatus().call();
-      let owned             =accounts[0]==owner;
+
+      /**
+       * Boucle permettant de récupérer la liste des propositions
+       */
+       let proposals=[];
+      for (let i=0;i<nbProposals;i++){
+        proposals.push(await instance.methods.getOneProposal(i).call({from:accounts[0]}));
+      }
+      let owned =accounts[0]==owner;
 
       let options   = {
         fromBlock:  0,                  //Number || "earliest" || "pending" || "latest"
         toBlock:    'latest'
       };
-      const listEvents  = await instance.getPastEvents('MaxVoters',options);
       const listAddress = await instance.getPastEvents('VoterRegistered',options);
-      this.setState({addresses:listAddress, events:listEvents, nbProposals, nbVoters,workflowStatus, web3, accounts, owned, contract: instance });
+
+      let listEvents  = await instance.getPastEvents('MaxVoters',options);
+      this.setState({addresses:listAddress, events:listEvents, nbProposals, proposals, nbVoters,workflowStatus, web3, accounts, owned, contract: instance });
+
+      let totalVotesCount = await instance.getPastEvents('Voted',options);
 
       /**
-       * Récupération de deux emit directement depuis le smart contract pour réutilisation en front :
+       * Récupération des emit directement depuis le smart contract pour réutilisation en front :
        */
-
+      this.setState({totalVotes:totalVotesCount});
       this.setState({MaxVoters:this.state.events.map((addresse)=>(addresse.returnValues.MaxVoters))});
-      this.setState({MaxProposals:this.state.events.map((addresse)=>(addresse.returnValues.MaxProposals))});
-
+      listEvents  = await instance.getPastEvents('MaxProposals',options);
+      this.setState({events:listEvents});
+      this.setState({MaxProposals:listEvents.map((addresse)=>(addresse.returnValues.MaxProposal))});
+      this.setState({events:await instance.getPastEvents('WorkflowStatusChange',options)});
       /**
        * Récupération du nombre de vote et du gagnant avec condition de positionnement dans le workflow
        */
 
+
+      /**
+       * En cours de déploiement
+       */
+      /*
       if (this.state.workflowStatus>=4){
         this.setState({totalVotes : await instance.methods.getTotalVotes().call()});
-      }
-      if (this.state.workflowStatus==5){
-        this.setState({winner:      await instance.methods.getWinner().call()});
-      }
+      }*/
 
+
+      
       /**
        * Afin de réutiliser efficacement les addresses, un tableau dynamique est utilisé.
        */
@@ -78,6 +94,7 @@ class App extends Component {
       const listEvents=await contract.getPastEvents('MaxVoters');
       this.setState({event:listEvents});
     }
+    window.window.location.reload();
   };
 
   runAddVoter = async ()=>{
@@ -102,6 +119,7 @@ class App extends Component {
             };
             const getEvent=await contract.getPastEvents('VoterRegistered',options);
             this.setState({event:getEvent});
+            window.location.reload();
             }
           }
         }else{
@@ -110,10 +128,10 @@ class App extends Component {
       }else{
         alert(`Merci de renseigner une adresse valide`);
       }
-
   };
 
   runDefineMaxProposals = async ()=>{
+
     const {accounts, contract}=this.state;
     const MaxProposals=document.getElementById("MaxProposals").value;
 
@@ -123,15 +141,16 @@ class App extends Component {
       await contract.methods.defineMaxProposals(MaxProposals).send({from:accounts[0]});
 
       const listEvents=await contract.getPastEvents('MaxProposals');
-      this.setState({event:listEvents, MaxProposals});
+      this.setState({events:listEvents});
     }
+    window.location.reload();
   };
 
   runAddProposal = async ()=>{
 
     const {accounts, contract}=this.state;
-    let proposition=document.getElementById("proposition").value;
-    await contract.methods.addProposal(proposition).send({from:accounts[0]});
+    let Proposal=document.getElementById("Proposal").value;
+    await contract.methods.addProposal(Proposal).send({from:accounts[0]});
 
     let options   = {
       fromBlock:  0,                  //Number || "earliest" || "pending" || "latest"
@@ -140,8 +159,23 @@ class App extends Component {
 
     const getEvent = await contract.getPastEvents('ProposalRegistered',options);
     this.setState({event:getEvent});
+    window.location.reload();
 };
+  runVoteForProposal= async ()=>{
+    const {accounts, contract}=this.state;
+    let idProposal=document.getElementById("idProposal").value;
 
+    if (this.state.web3.utils.isAddress(accounts[0])){
+      this.setState({voter:await contract.methods.getVoter(accounts[0]).call({from:accounts[0]})});
+    }
+    if(this.state.voter.hasVoted==true){
+      alert("vous avez déjà voté !");
+    }else{
+      await contract.methods.setVote(idProposal).send({from:accounts[0]});
+      alert("Vote enregistré!");
+    }
+    window.location.reload();
+  }
   /**
    * this section is about all functions used to interact with the SC
    */
@@ -164,23 +198,16 @@ class App extends Component {
     }
     let workflowStatus = await contract.methods.getWorkflowStatus().call();
     this.setState({workflowStatus});
+    window.location.reload();
   }
 
   /**
    * Getters particuliers avec paramètres
    */
-
-   getVoter = async (id) =>{
+  getVoter = async (address) =>{
     const {accounts, contract}=this.state;
-    if (id<=this.state.nbVoters&&id>=0){
-      this.setState({voter:await contract.methods.getVoter(id).call({from:accounts[0]})});
-      return(
-        <div>{this.state.voter}</div>
-      );
-    }else{
-      return(
-        <div>L'id renseigné ne retourne aucun enregistrement, veuillez vérifier votre saisie.</div>
-      );
+    if (this.state.web3.utils.isAddress(address)){
+      this.setState({voter:await contract.methods.getVoter(address).call({from:accounts[0]})});
     }
   }
 
@@ -199,9 +226,36 @@ class App extends Component {
   }
 
   /**
+   * Fonction non opérationnelles pour l'instant
+   */
+  /*
+  getTotalVotes(){
+    if(this.state.workflowStatus>3){
+      return(
+        <div>
+          <h3>Nombre total de votes comptabilisés : &nbsp;{this.state.totalVotes.length+1}</h3>
+        </div>
+      );
+    }
+  }
+  sendWinnerCalculation = async () =>{
+    const {accounts, contract}=this.state;
+      await contract.methods.tallyVotesDraw().send({from:accounts[0]});
+      window.location.reload();
+  }
+  getWinner(){
+    if(this.state.workflowStatus==5){
+      
+      return(
+        <div><h1>Le gagnant est : &nbsp;{this.state.winner}</h1></div>
+      );
+    }
+  }
+  */
+
+  /**
    * admin render parts
    */
-
   adminTextMessage(){
     return(
       <div>
@@ -257,7 +311,7 @@ class App extends Component {
     if (this.state.workflowStatus==0 && this.state.nbVoters>=2){
       return(
         <form>
-          <label for="nextStep">Passer à l'étape suivante ? :&nbsp;</label>
+          <label for="nextStep">Passer à l'étape d'ajout des propositions ? :&nbsp;</label>
           <input type="button" id="nextStep" onClick={this.runNextStep} value="On y va !"/><br />
         </form>
       );
@@ -265,15 +319,31 @@ class App extends Component {
     if (this.state.workflowStatus==1 && this.state.nbProposals>=2){
       return(
         <form>
-          <label for="nextStep">Passer à l'étape suivante ? :&nbsp;</label>
+          <label for="nextStep">Mettre fin à l'étape de l'ajout des propositions ? :&nbsp;</label>
           <input type="button" id="nextStep" onClick={this.runNextStep} value="On y va !"/><br />
         </form>
       );
     }
-    if (this.state.workflowStatus==2 && this.state.nbVotes>=2){
+    if ((this.state.workflowStatus==2)){
       return(
         <form>
-          <label for="nextStep">Passer à l'étape suivante ? :&nbsp;</label>
+          <label for="nextStep">Passer à l'étape de vote ? :&nbsp;</label>
+          <input type="button" id="nextStep" onClick={this.runNextStep} value="On y va !"/><br />
+        </form>
+      );
+    }
+    if ((this.state.workflowStatus==3)){
+      return(
+        <form>
+          <label for="nextStep">Mettre fin au vote ? :&nbsp;</label>
+          <input type="button" id="nextStep" onClick={this.runNextStep} value="On y va !"/><br />
+        </form>
+      );
+    }
+    if ((this.state.workflowStatus==4)){
+      return(
+        <form>
+          <label for="nextStep">Passer à l'étape des résultats ? :&nbsp;</label>
           <input type="button" id="nextStep" onClick={this.runNextStep} value="On y va !"/><br />
         </form>
       );
@@ -281,17 +351,33 @@ class App extends Component {
   }
 
   adminDefineMaxProposals(){
-    if(this.state.MaxProposals<=2 && this.state.workflowStatus==1){
+    if(this.state.MaxProposals<2 && this.state.workflowStatus==1){
       return(
         <div>
-          <form>
-            <label for="MaxProposals">Définir le nombre de propositions : </label>
-            <input type="text" id="MaxProposals" placeholder="Nb de propositions"/>&nbsp;
-            <input type="button" onClick={this.runDefineMaxProposals}value="Ajouter"/>
-          </form>
+          <p>
+            <form>
+              <label for="MaxProposals">Définir le nombre de propositions : </label>
+              <input type="text" id="MaxProposals" placeholder="Nb de propositions"/>&nbsp;
+              <input type="button" onClick={this.runDefineMaxProposals}value="Ajouter"/>
+            </form>
+          </p>
         </div>
       );
     };
+  }
+  adminAllowCalculatingWinner(){
+    if(this.state.workflowStatus==5){
+      return(
+        <div>
+          <p>
+          <form>
+              <label for="CalculateWinner"><h2>Appuyez sur le bouton pour terminer :&nbsp;</h2></label>
+              <input type="button" onClick={this.sendWinnerCalculation}value="Qui est le gagnant ?"/>
+            </form>
+          </p>
+        </div>
+      );
+    }
   }
 
   /**
@@ -332,16 +418,35 @@ class App extends Component {
       );
     }
   }
-
+  commonGetProposalList(){
+    if(this.state.nbProposals>0){
+      return(
+        <div>
+        <p>
+          <strong>Liste actuelle des Propositions :</strong>
+          <table><tr><td><div>Proposition :</div></td><td><div>Nb de vote :</div></td></tr>
+          {this.state.proposals.map((proposals)=>(
+            <tr><td><div>{proposals[0]}</div></td><td><div>{proposals[1]}</div></td></tr>
+            ))}
+          </table>
+        </p>
+      </div>
+      );
+    }
+  }
   commonMessageAboutWorkFlow(){
     if (this.state.workflowStatus==0){
       return(<div><p><strong>Session d'enregistrement des votants en cours, merci d'attendre la session "{this.enumWorkflowStatus[(parseInt(this.state.workflowStatus))+1]}" pour ajouter des proposition.</strong></p></div>);
     }
-    if (this.state.workflowStatus==1&&this.state.MaxProposals!=0){
-      return(<div><p><strong>Vous pouvez désormais enregistrer des propositions.</strong></p></div>);
-    }
+
     if(this.state.workflowStatus==1&&this.state.MaxProposals<2){
       return(<div><p><strong>Attendez que l'admin définisse le nombre de propositions maximal.</strong></p></div>);
+    }
+    if (this.state.workflowStatus==1&&this.state.MaxProposals!=0&&this.state.nbProposals<this.state.MaxProposals){
+      return(<div><p><strong>Vous pouvez désormais enregistrer des propositions.</strong></p></div>);
+    }
+    if (this.state.workflowStatus==1&&this.state.nbProposals==this.state.MaxProposals){
+      return(<div><p><strong>la liste des proposition est complete, attendez que l'admin lance la session "{this.enumWorkflowStatus[(parseInt(this.state.workflowStatus))+2]}" pour pouvoir voter.</strong></p></div>);
     }
     if (this.state.workflowStatus==2){
       return(<div><p><strong>Session d'enregistrement des propositions terminée, veuillez attendre le début de la session "{this.enumWorkflowStatus[(parseInt(this.state.workflowStatus))+1]}" pour pouvoir voter.</strong></p></div>);
@@ -356,6 +461,52 @@ class App extends Component {
       return(<div><p><strong>Résultat du vote :</strong></p></div>);
     }
   }
+  commonSetProposal(){
+    if(this.state.workflowStatus==1&&this.state.MaxProposals!=0&&this.state.nbProposals<this.state.MaxProposals){
+      return(
+        <div>
+          <p>
+            <form>
+              <label for="Proposal">Définir une proposition : </label>
+              <input type="text" id="Proposal" placeholder="Proposition?"/>&nbsp;
+              <input type="button" onClick={this.runAddProposal} value="Ajouter"/>
+            </form>
+          </p>
+        </div>
+      );
+    }
+  }
+  commonShowProposals(){
+    let i=0;
+    if(this.state.workflowStatus==3){
+      return(
+        <div>
+          <table>
+            <tr>
+              <td>
+                <div>Voter pour:</div>
+              </td>
+            </tr>
+            {this.state.proposals.map((proposals)=>(
+              <tr>
+                <td>
+                  <div>
+                    <form>
+                      <label for="idProposal">{proposals[0]} </label>
+                      <input type="button" onClick={this.runVoteForProposal}value="Voter !"/>
+                      <input type="hidden" id="idProposal" value={i++}/>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              )
+            )}
+          </table>
+      </div>
+      );
+    }
+  }
+
   render() {
     if (!this.state.web3) {
       return (
@@ -374,7 +525,12 @@ class App extends Component {
           {this.adminNextStepSection()}
           {this.adminDefineMaxProposals()}
           {this.commonVoterList()}
-
+          {this.commonSetProposal()}
+          {this.commonGetProposalList()}
+          {this.commonShowProposals()}
+          {/*this.getTotalVotes()*/}
+          {/*this.adminAllowCalculatingWinner()*/}
+          {/*this.getWinner()*/}
         </div>
       );
     }else{
@@ -383,11 +539,12 @@ class App extends Component {
           {this.commonStatus()}
           {this.commonVoterList()}
           {this.commonMessageAboutWorkFlow()}
-
-
-
-
-        </div>
+          {this.commonSetProposal()}
+          {this.commonGetProposalList()}
+          {this.commonShowProposals()}
+          {/*this.getTotalVotes()*/}
+          {/*this.getWinner()*/}
+          </div>
       );
     }
   }
