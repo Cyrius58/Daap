@@ -120,7 +120,7 @@ class App extends Component {
     if(MaxProposals<2||MaxProposals>100||MaxProposals ==null){
       alert(`Please enter a value beetween 2 and 100.`);
     }else{
-      await contract.methods.defineMaxVoters(MaxProposals).send({from:accounts[0]});
+      await contract.methods.defineMaxProposals(MaxProposals).send({from:accounts[0]});
 
       const listEvents=await contract.getPastEvents('MaxProposals');
       this.setState({event:listEvents, MaxProposals});
@@ -286,7 +286,7 @@ class App extends Component {
         <div>
           <form>
             <label for="MaxProposals">Définir le nombre de propositions : </label>
-            <input type="text" id="MaxProposals" min="2" max="10" placeholder="Nb de propositions"/>&nbsp;
+            <input type="text" id="MaxProposals" placeholder="Nb de propositions"/>&nbsp;
             <input type="button" onClick={this.runDefineMaxProposals}value="Ajouter"/>
           </form>
         </div>
