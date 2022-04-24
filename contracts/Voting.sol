@@ -8,9 +8,9 @@ contract Voting is Ownable {
 
 // ::::::::::::: VARS ::::::::::::: //
     // arrays for draw, uint for single
-    uint[] winningProposalsID;
-    Proposal[] winningProposals;
-    uint public winningProposalID;
+    uint[] private winningProposalsID;
+    Proposal[] private winningProposals;
+    uint private winningProposalID;
     
     struct Voter {
         bool isRegistered;
@@ -23,7 +23,7 @@ contract Voting is Ownable {
         uint voteCount;
     }
 
-    enum  WorkflowStatus {
+    enum WorkflowStatus {
         RegisteringVoters,
         ProposalsRegistrationStarted,
         ProposalsRegistrationEnded,
@@ -32,8 +32,8 @@ contract Voting is Ownable {
         VotesTallied
     }
 
-    WorkflowStatus public workflowStatus;
-    Proposal[] public proposalsArray;
+    WorkflowStatus private workflowStatus;
+    Proposal[] private proposalsArray;
     uint private nbProposals;
     uint private nbProposalsMax;
     uint private nbVoters;
@@ -80,29 +80,28 @@ contract Voting is Ownable {
 
 // ::::::::::::: GETTERS ::::::::::::: //
 
-    function getVoter(address _addr) external onlyVoters view returns (Voter memory) {
-        return voters[_addr];
+    function getNbProposals()public view returns (uint){
+        return nbProposals;
     }
-    
+    function getNbVoters()public view returns (uint){
+        return nbVoters;
+    }
     function getOneProposal(uint _id) external onlyVoters view returns (Proposal memory) {
         require(_id<=nbProposals,'Not proposal listed with this id');
         return proposalsArray[_id];
     }
-
+    function getTotalVotes()public view onlyVotingSessionEndedStatus returns (uint){
+        return nbVotes;
+    }
+    function getVoter(address _addr) external onlyVoters view returns (Voter memory) {
+        return voters[_addr];
+    }
     function getWinner() external view returns (Proposal[] memory) {
         require(workflowStatus == WorkflowStatus.VotesTallied, 'Votes are not tallied yet');
         return winningProposals;
     }
-
-    function getNbVoters()public view returns (uint){
-        return nbVoters;
-    }
-
-    function getNbProposals()public view returns (uint){
-        return nbProposals;
-    }
-    function getTotalVotes()public view onlyVotingSessionEndedStatus returns (uint){
-        return nbVotes;
+    function getWorkflowStatus() public view returns (WorkflowStatus){
+        return workflowStatus;
     }
 //
 

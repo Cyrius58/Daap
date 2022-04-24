@@ -16,7 +16,7 @@ const getWeb3 = () =>
           window.ethereum.on('accountsChanged',function(){
             window.location.reload();
           });
-          window.ethereum.on('chainChanged ',function(){
+          window.ethereum.on('chainChanged',function(){
             window.location.reload();
           });
           
