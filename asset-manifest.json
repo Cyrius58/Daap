@@ -1,21 +1,21 @@
 {
   "files": {
     "main.css": "/Daap/static/css/main.27c09b67.chunk.css",
-    "main.js": "/Daap/static/js/main.17cb8e76.chunk.js",
-    "main.js.map": "/Daap/static/js/main.17cb8e76.chunk.js.map",
+    "main.js": "/Daap/static/js/main.8c381209.chunk.js",
+    "main.js.map": "/Daap/static/js/main.8c381209.chunk.js.map",
     "runtime-main.js": "/Daap/static/js/runtime-main.558329f0.js",
     "runtime-main.js.map": "/Daap/static/js/runtime-main.558329f0.js.map",
-    "static/js/2.cf366a20.chunk.js": "/Daap/static/js/2.cf366a20.chunk.js",
-    "static/js/2.cf366a20.chunk.js.map": "/Daap/static/js/2.cf366a20.chunk.js.map",
+    "static/js/2.ee1f9dd4.chunk.js": "/Daap/static/js/2.ee1f9dd4.chunk.js",
+    "static/js/2.ee1f9dd4.chunk.js.map": "/Daap/static/js/2.ee1f9dd4.chunk.js.map",
     "index.html": "/Daap/index.html",
-    "precache-manifest.f5b5e8947cff0b1ec5d6a210b9b0aa0a.js": "/Daap/precache-manifest.f5b5e8947cff0b1ec5d6a210b9b0aa0a.js",
+    "precache-manifest.8f60bcad31a65e716dcc8349d96b5824.js": "/Daap/precache-manifest.8f60bcad31a65e716dcc8349d96b5824.js",
     "service-worker.js": "/Daap/service-worker.js",
     "static/css/main.27c09b67.chunk.css.map": "/Daap/static/css/main.27c09b67.chunk.css.map"
   },
   "entrypoints": [
     "static/js/runtime-main.558329f0.js",
-    "static/js/2.cf366a20.chunk.js",
+    "static/js/2.ee1f9dd4.chunk.js",
     "static/css/main.27c09b67.chunk.css",
-    "static/js/main.17cb8e76.chunk.js"
+    "static/js/main.8c381209.chunk.js"
   ]
 }
